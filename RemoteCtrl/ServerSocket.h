@@ -2,6 +2,9 @@
 #include "pch.h"
 #include "framework.h"
 
+#pragma pack(push)	// 保存当前内存对齐
+#pragma pack(1)	// 改成1
+
 // 包
 class CPacket
 {
@@ -15,7 +18,21 @@ public:
 		strData = pack.strData;
 		sSum = pack.sSum;
 	}
-	CPacket(const BYTE* pData, size_t& nSize)
+	CPacket(WORD  nCmd, const BYTE* pData, size_t nSize)	// 打包的重构
+	{
+		sHead = 0xFEFF;	// 包头
+		nLength = nSize + 4;	// =数据加命令加校验
+		sCmd = nCmd;
+		strData.resize(nSize);
+		memcpy((void*)strData.c_str(), pData, nSize);
+		// 和校验 
+		sSum = 0;
+		for (size_t j = 0; j < strData.size(); j++)
+		{
+			sSum += BYTE(strData[j]) & 0xFF;
+		}
+	}
+	CPacket(const BYTE* pData, size_t& nSize)	// 解包的重构
 	{
 		size_t i = 0;
 		for (; i < nSize; i++)
@@ -58,7 +75,7 @@ public:
 		WORD sum = 0;
 		for (size_t j = 0; j < strData.size(); j++)
 		{
-			sum += BYTE(strData[i]) & 0xFF;
+			sum += BYTE(strData[j]) & 0xFF;
 		}
 		if (sum == sSum)
 		{
@@ -81,15 +98,37 @@ public:
 		}
 		return *this;
 	}
-
+	// 包数据大小
+	int Size()
+	{
+		// +6是加包头和本身
+		return nLength + 6;
+	}
+	// 得到包数据的值
+	const char* Data()
+	{
+		strOut.resize(nLength + 6);
+		BYTE* pDaata = (BYTE*)strOut.c_str();
+		*(WORD*)pDaata = sHead;
+		pDaata += 2;
+		*(DWORD*)pDaata = nLength;
+		pDaata += 4;
+		*(WORD*)pDaata = sCmd;
+		pDaata += 2;
+		memcpy(pDaata, strData.c_str(), strData.size());
+		pDaata += strData.size();
+		*(WORD*)pDaata = sSum;
+		return strOut.c_str();
+	}
 public:
 	WORD sHead; // 包头 FE FF
 	DWORD nLength;// 包长度，控制命令开始到和校验结束
 	WORD sCmd;// 命令
 	std::string strData;// 包数据
 	WORD sSum;// 和校验
+	std::string strOut;	// 整个包的数据
 };
-
+#pragma pack(pop)	// 还原
 class CServerSocket
 {
 public:
@@ -167,6 +206,13 @@ public:
 		if (m_client == -1)
 			return false;
 		return send(m_client, pData, nSize, 0) > 0;
+	}
+	bool Send(CPacket& pack)
+	{
+		if (m_client == -1)
+			return false;
+		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
+
 	}
 private:
 	SOCKET m_sock, m_client;
