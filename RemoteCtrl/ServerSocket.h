@@ -214,6 +214,17 @@ public:
 		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
 
 	}
+	//	指定目录下的文件功能的获取包数据的内容
+	bool GetFilePath(std::string& strPath)
+	{
+		if (m_packet.sCmd == 2)
+		{
+			// 是查看指定目录下的文件的命令
+			strPath = m_packet.strData;
+			return true;
+		}
+		return false;
+	}
 private:
 	SOCKET m_sock, m_client;
 	CPacket m_packet;

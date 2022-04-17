@@ -6,6 +6,8 @@
 #include "RemoteCtrl.h"
 #include "ServerSocket.h"
 #include <direct.h>	// 读取磁盘分区
+#include <io.h>	// 查找文件
+//#include <list>
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -30,7 +32,6 @@ void Dump(BYTE* pData, size_t nSize)
 	strOut += "\n";
 	OutputDebugStringA(strOut.c_str());
 }
-
 // 查看磁盘分区
 int MakeDriverInfo()
 {
@@ -48,6 +49,70 @@ int MakeDriverInfo()
 	CPacket pack(1, (BYTE*)result.c_str(), result.size());	// 打包
 	Dump((BYTE*)pack.Data(), pack.Size());
 	//CServerSocket::getInstance()->Send(pack);
+	return 0;
+}
+// 查看指定目录下的文件功能的结构体
+typedef struct file_info
+{
+	// 结构体的构造函数
+	file_info()
+	{
+		IsInvalid = FALSE;
+		IsDirectory = -1;
+		HasNext = TRUE;
+		memset(szFileName, 0, sizeof(IsDirectory));
+	}
+	BOOL IsInvalid;	// 是否为有效文件
+	BOOL IsDirectory;	// 是否为目录 0否 1是
+	BOOL HasNext;	// 是否还有后续 0没有 1有
+	char szFileName[256];	// 文件名
+}FILEINFO, * PFILEINFO;
+// 查看指定目录下的文件
+int MakeDirectorInfo()
+{
+	string strPath;
+	//std::list<FILEINFO> lstFileInfo;
+	if (CServerSocket::getInstance()->GetFilePath(strPath) == false)
+	{
+		OutputDebugString(_T("当前的命令不是获取文件列表，命令解析错误！"));
+		return -1;
+	}
+	// 切换当前目录
+	if (_chdir(strPath.c_str()) != 0)
+	{
+		FILEINFO finfo;
+		finfo.IsInvalid = TRUE;
+		finfo.IsDirectory = TRUE;
+		finfo.HasNext = FALSE;
+		memcpy(finfo.szFileName, strPath.c_str(), strPath.size());
+		//lstFileInfo.push_back(finfo);
+		CPacket Pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
+		CServerSocket::getInstance()->Send(Pack);	// 发送
+		OutputDebugString(_T("没有权限访问目录！"));
+		return -2;
+	}
+	_finddata_t fdata;
+	int hfind = 0;
+	// 查找文件
+	if ((hfind = _findfirst("*", &fdata)) == -1)
+	{
+		OutputDebugString(_T("没有找到任何文件！"));
+		return -3;
+	}
+	// 遍历查找文件
+	do
+	{
+		FILEINFO finfo;
+		finfo.IsDirectory = (fdata.attrib & _A_SUBDIR) != 0;
+		memcpy(finfo.szFileName, fdata.name, strlen(fdata.name));
+		//lstFileInfo.push_back(finfo);
+		CPacket Pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
+		CServerSocket::getInstance()->Send(Pack);	// 发送
+	} while (!_findnext(hfind, &fdata));
+	FILEINFO finfo;
+	finfo.HasNext = FALSE;
+	CPacket Pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
+	CServerSocket::getInstance()->Send(Pack);	// 发送
 	return 0;
 }
 int main()
@@ -96,7 +161,12 @@ int main()
 			switch (nCmd)
 			{
 			case 1:
+				// 查看磁盘分区
 				MakeDriverInfo();
+				break;
+			case 2:
+				// 查看指定目录下的文件
+				MakeDirectorInfo();
 				break;
 			}
 		}
