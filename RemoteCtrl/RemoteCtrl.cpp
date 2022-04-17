@@ -7,6 +7,7 @@
 #include "ServerSocket.h"
 #include <direct.h>	// 读取磁盘分区
 #include <io.h>	// 查找文件
+#include <atlimage.h> // 截屏
 //#include <list>
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -260,6 +261,43 @@ int MouseEvent()
 	}
 	return 0;
 }
+// 屏幕内容操作
+int SendScreen()
+{
+	CImage screen;	// GDI
+	HDC hScreen = ::GetDC(NULL);	// 设备上下文
+	int nBitPerPixel = GetDeviceCaps(hScreen, BITSPIXEL);	// 位宽
+	int nWidth = GetDeviceCaps(hScreen, HORZRES);	// 宽
+	int nHeight = GetDeviceCaps(hScreen, VERTRES);	// 高
+	screen.Create(nWidth, nHeight, nBitPerPixel);	// 创建图片大小
+	BitBlt(screen.GetDC(), 0, 0, 2560, 1440, hScreen, 0, 0, SRCCOPY);	// 完成截屏
+	ReleaseDC(NULL, hScreen);	// 清空
+	HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);	// 分配堆上可调大小的内存
+	if (hMem == NULL)
+		return -1;
+	IStream* pStream = NULL;
+	HRESULT ret = CreateStreamOnHGlobal(hMem, TRUE, &pStream);	// 在全局对象上创建内存流
+	if (ret == S_OK)
+	{
+		screen.Save(pStream, Gdiplus::ImageFormatJPEG);	// 以JPG图片保存到内存中
+		LARGE_INTEGER bg = { 0 };
+		pStream->Seek(bg, STREAM_SEEK_SET, NULL);
+		PBYTE pData = (PBYTE)GlobalLock(hMem);
+		SIZE_T nSize = GlobalSize(hMem);
+		CPacket pack(6, pData, nSize);
+		CServerSocket::getInstance()->Send(pack);
+		GlobalUnlock(hMem);
+	}
+	//	DWORD tick = GetTickCount64();
+	//	screen.Save(_T("test2020.png"), Gdiplus::ImageFormatPNG);	// 以PNG图片显示
+	//	TRACE("png %d\r\n", GetTickCount64() - tick);
+	//	tick = GetTickCount64();
+	//	TRACE("jpg %d\n", GetTickCount64() - tick);
+	pStream->Release();
+	GlobalFree(hMem);
+	screen.ReleaseDC();	// 清空设备上下文
+	return 0;
+}
 int main()
 {
 	int nRetCode = 0;
@@ -302,7 +340,7 @@ int main()
 			//	// TODO:
 			//}
 
-			int nCmd = 1;
+			int nCmd = 6;
 			switch (nCmd)
 			{
 			case 1:
@@ -324,6 +362,9 @@ int main()
 			case 5:
 				// 鼠标操作
 				MouseEvent();
+				break;
+			case 6:
+				SendScreen();
 				break;
 			}
 		}
