@@ -86,8 +86,8 @@ int MakeDirectorInfo()
 		finfo.HasNext = FALSE;
 		memcpy(finfo.szFileName, strPath.c_str(), strPath.size());
 		//lstFileInfo.push_back(finfo);
-		CPacket Pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
-		CServerSocket::getInstance()->Send(Pack);	// 发送
+		CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
+		CServerSocket::getInstance()->Send(pack);	// 发送
 		OutputDebugString(_T("没有权限访问目录！"));
 		return -2;
 	}
@@ -106,13 +106,61 @@ int MakeDirectorInfo()
 		finfo.IsDirectory = (fdata.attrib & _A_SUBDIR) != 0;
 		memcpy(finfo.szFileName, fdata.name, strlen(fdata.name));
 		//lstFileInfo.push_back(finfo);
-		CPacket Pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
-		CServerSocket::getInstance()->Send(Pack);	// 发送
+		CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
+		CServerSocket::getInstance()->Send(pack);	// 发送
 	} while (!_findnext(hfind, &fdata));
 	FILEINFO finfo;
 	finfo.HasNext = FALSE;
-	CPacket Pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
-	CServerSocket::getInstance()->Send(Pack);	// 发送
+	CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
+	CServerSocket::getInstance()->Send(pack);	// 发送
+	return 0;
+}
+// 打开文件
+int RunFile()
+{
+	string strPath;
+	CServerSocket::getInstance()->GetFilePath(strPath);
+	// 对指定文件执行操作
+	ShellExecuteA(NULL, NULL, strPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
+	CPacket pack(3, NULL, 0);	// 打包
+	CServerSocket::getInstance()->Send(pack);	// 发送
+	return 0;
+}
+// 下载文件
+int DownloadFile()
+{
+	string strPath;
+	CServerSocket::getInstance()->GetFilePath(strPath);
+	long long data = 0;
+	// 以读的方式打开文件
+	FILE* pFile = NULL;
+	errno_t err = fopen_s(&pFile, strPath.c_str(), "rb");
+	if (err != 0 || (pFile == NULL))
+	{
+		// 文件打开失败
+		CPacket pack(4, (BYTE*)&data, 8);	// 打包
+		CServerSocket::getInstance()->Send(pack);	// 发送
+		return -1;
+	}
+	// 移动文件流的读写指针位置到尾部
+	fseek(pFile, 0, SEEK_END);
+	// 拿取文件的长度
+	data = _ftelli64(pFile);
+	CPacket head(4, (BYTE*)&data, 8);
+	// 移动文件流的读写指针位置到头部
+	fseek(pFile, 0, SEEK_SET);
+	char buffer[1024] = "";
+	size_t rlen = 0;
+	do
+	{
+		// 从文件流中读取数据
+		rlen = fread(buffer, 1, 1024, pFile);
+		CPacket pack(4, (BYTE*)buffer, rlen);	// 打包
+		CServerSocket::getInstance()->Send(pack);	// 发送
+	} while (rlen >= 1024);
+	CPacket pack(4, NULL, 0);	// 打包
+	CServerSocket::getInstance()->Send(pack);	// 发送
+	fclose(pFile);	// 关闭文件
 	return 0;
 }
 int main()
@@ -167,6 +215,14 @@ int main()
 			case 2:
 				// 查看指定目录下的文件
 				MakeDirectorInfo();
+				break;
+			case 3:
+				// 打开文件
+				RunFile();
+				break;
+			case 4:
+				// 下载文件
+				DownloadFile();
 				break;
 			}
 		}

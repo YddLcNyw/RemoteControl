@@ -23,8 +23,13 @@ public:
 		sHead = 0xFEFF;	// 包头
 		nLength = nSize + 4;	// =数据加命令加校验
 		sCmd = nCmd;
-		strData.resize(nSize);
-		memcpy((void*)strData.c_str(), pData, nSize);
+		if (nSize > 0)
+		{
+			strData.resize(nSize);
+			memcpy((void*)strData.c_str(), pData, nSize);
+		}
+		else
+			strData.clear();
 		// 和校验 
 		sSum = 0;
 		for (size_t j = 0; j < strData.size(); j++)
@@ -214,12 +219,11 @@ public:
 		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
 
 	}
-	//	指定目录下的文件功能的获取包数据的内容
+	//	文件查找功能的获取包数据的内容
 	bool GetFilePath(std::string& strPath)
 	{
-		if (m_packet.sCmd == 2)
+		if ((m_packet.sCmd >= 2) && (m_packet.sCmd <= 4))
 		{
-			// 是查看指定目录下的文件的命令
 			strPath = m_packet.strData;
 			return true;
 		}
