@@ -113,16 +113,16 @@ public:
 	const char* Data()
 	{
 		strOut.resize(nLength + 6);
-		BYTE* pDaata = (BYTE*)strOut.c_str();
-		*(WORD*)pDaata = sHead;
-		pDaata += 2;
-		*(DWORD*)pDaata = nLength;
-		pDaata += 4;
-		*(WORD*)pDaata = sCmd;
-		pDaata += 2;
-		memcpy(pDaata, strData.c_str(), strData.size());
-		pDaata += strData.size();
-		*(WORD*)pDaata = sSum;
+		BYTE* pData = (BYTE*)strOut.c_str();
+		*(WORD*)pData = sHead;
+		pData += 2;
+		*(DWORD*)pData = nLength;
+		pData += 4;
+		*(WORD*)pData = sCmd;
+		pData += 2;
+		memcpy(pData, strData.c_str(), strData.size());
+		pData += strData.size();
+		*(WORD*)pData = sSum;
 		return strOut.c_str();
 	}
 public:
