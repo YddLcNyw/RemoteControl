@@ -20,12 +20,12 @@ class CAboutDlg : public CDialogEx
 public:
 	CAboutDlg();
 
-// 对话框数据
+	// 对话框数据
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_ABOUTBOX };
 #endif
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
 // 实现
@@ -65,6 +65,7 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_BTN_TEST, &CRemoteClientDlg::OnBnClickedBtnTest)
 END_MESSAGE_MAP()
 
 
@@ -154,3 +155,21 @@ HCURSOR CRemoteClientDlg::OnQueryDragIcon()
 }
 
 // 再次测试
+
+void CRemoteClientDlg::OnBnClickedBtnTest()
+{	// 获取套接字的实例
+	CClientSocket* pClient = CClientSocket::getInstance();
+	// 网络初始化
+	bool ret = pClient->InitSocket("127.0.0.1");
+	if (!ret)
+	{
+		AfxMessageBox("网络初始化失败！");
+		return;
+	}
+	CPacket pack(1981, NULL, 0);
+	ret = pClient->Send(pack);
+	TRACE("Send ret %d\r\n", ret);
+	int cmd = pClient->DealCommand();
+	TRACE("ack：\r\n", cmd);
+	pClient->CloseSocket();
+}

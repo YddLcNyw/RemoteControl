@@ -386,6 +386,56 @@ int UnlockMachine()
 	CServerSocket::getInstance()->Send(pack);
 	return 0;
 }
+// 连接测试
+int TestConnect()
+{
+	CPacket pack(1981, NULL, 0);
+	CServerSocket::getInstance()->Send(pack);
+	return 0;
+}
+// 调用相关功能
+int ExcuteCommand(int nCmd)
+{
+	int ret = 0;
+	switch (nCmd)
+	{
+	case 1:
+		// 查看磁盘分区
+		ret = MakeDriverInfo();
+		break;
+	case 2:
+		// 查看指定目录下的文件
+		ret = MakeDirectorInfo();
+		break;
+	case 3:
+		// 打开文件
+		ret = RunFile();
+		break;
+	case 4:
+		// 下载文件
+		ret = DownloadFile();
+		break;
+	case 5:
+		// 鼠标操作
+		ret = MouseEvent();
+		break;
+	case 6:
+		ret = SendScreen();
+		break;
+	case 7:
+		// 锁机
+		ret = LockMachinc();
+		break;
+	case 8:
+		// 解锁
+		ret = UnlockMachine();
+		break;
+	case 1981:
+		ret = TestConnect();
+		break;
+	}
+	return ret;
+}
 int main()
 {
 	int nRetCode = 0;
@@ -405,70 +455,37 @@ int main()
 		{
 			// TODO: 在此处为应用程序的行为编写代码。
 			// 套接字初始化
-			//CServerSocket* pserver = CServerSocket::getInstance();
-			//int count = 0;
-			//if (pserver->InitSocket() == false)
-			//{
-			//	MessageBox(NULL, _T("网络初始化异常，未能成功初始化，请检查网络状态！"), _T("网络初始化失败！"), MB_OK | MB_ICONERROR);
-			//	exit(0);
-			//}
-			//while (CServerSocket::getInstance() != NULL)
-			//{
-			//	if (pserver->AcceptClient() == false)
-			//	{
-			//		if (count >= 3)
-			//		{
-			//			MessageBox(NULL, _T("多次无法正常接入用户，结束程序！"), _T("多次接入用户失败！"), MB_OK | MB_ICONERROR);
-			//			exit(0);
-			//		}
-			//		MessageBox(NULL, _T("无法正常接入用户，自动重试！"), _T("接入用户失败！"), MB_OK | MB_ICONERROR);
-			//		count++;
-			//	}
-			//	int ret = pserver->DealCommand();
-			//	// TODO:
-			//}
-			int nCmd = 7;
-			switch (nCmd)
+			CServerSocket* pserver = CServerSocket::getInstance();
+			int count = 0;
+			if (pserver->InitSocket() == false)
 			{
-			case 1:
-				// 查看磁盘分区
-				MakeDriverInfo();
-				break;
-			case 2:
-				// 查看指定目录下的文件
-				MakeDirectorInfo();
-				break;
-			case 3:
-				// 打开文件
-				RunFile();
-				break;
-			case 4:
-				// 下载文件
-				DownloadFile();
-				break;
-			case 5:
-				// 鼠标操作
-				MouseEvent();
-				break;
-			case 6:
-				SendScreen();
-				break;
-			case 7:
-				// 锁机
-				LockMachinc();
-				// Sleep(50);
-				//	LockMachinc();
-				break;
-			case 8:
-				// 解锁
-				UnlockMachine();
-				break;
+				MessageBox(NULL, _T("网络初始化异常，未能成功初始化，请检查网络状态！"), _T("网络初始化失败！"), MB_OK | MB_ICONERROR);
+				exit(0);
 			}
-			Sleep(5000);
-			UnlockMachine();
-			while (dlg.m_hWnd != NULL)
+			while (CServerSocket::getInstance() != NULL)
 			{
-				Sleep(10);
+				if (pserver->AcceptClient() == false)
+				{
+					if (count >= 3)
+					{
+						MessageBox(NULL, _T("多次无法正常接入用户，结束程序！"), _T("多次接入用户失败！"), MB_OK | MB_ICONERROR);
+						exit(0);
+					}
+					MessageBox(NULL, _T("无法正常接入用户，自动重试！"), _T("接入用户失败！"), MB_OK | MB_ICONERROR);
+					count++;
+				}
+				TRACE("AcceptClient return true\r\n");
+				int ret = pserver->DealCommand();
+				TRACE("DealCommand ret = %d\r\n", ret);
+				if (ret > 0)
+				{
+					ret = ExcuteCommand(ret);
+					if (ret != 0)
+					{
+						TRACE("执行命令失败：%d ret = %d\r\n", pserver->GetPacket().sCmd, ret);
+					}
+					pserver->CliseCilent();
+				}
 			}
 		}
 	}

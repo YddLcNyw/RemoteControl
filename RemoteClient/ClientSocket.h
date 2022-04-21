@@ -2,6 +2,7 @@
 #include "pch.h"
 #include "framework.h"
 #include <string>
+#include <vector>
 #pragma pack(push)	// 保存当前内存对齐
 #pragma pack(1)	// 改成1
 
@@ -51,7 +52,7 @@ public:
 			}
 		}
 		// 加4是包长度，加2是是命令，加2是和校验
-		if (i + 4 + 2 + 2 >= nSize)
+		if (i + 4 + 2 + 2 > nSize)
 		{
 			// 包数据可能不全，或者包头没有完全接收
 			nSize = 0;
@@ -148,23 +149,7 @@ typedef struct MouseEvent
 	POINT ptXY;	// 坐标
 }MOUSEEV, * PMOUSEEV;
 // 报错函数
-std::string GetErrorInfo(int wsaErrCode)
-{
-	std::string ret;
-	LPVOID lpMsgBuf = NULL;
-	// 把错误码进行格式化函数
-	FormatMessage
-	(
-		FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
-		NULL,
-		wsaErrCode,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPTSTR)&lpMsgBuf, 0, NULL);
-	ret = (char*)lpMsgBuf;
-	// 清空
-	LocalFree(lpMsgBuf);
-	return ret;
-}
+std::string GetErrorInfo(int wsaErrCode);
 class CClientSocket
 {
 public:
@@ -178,15 +163,17 @@ public:
 	// 初始化操作函数
 	bool InitSocket(const std::string& strIPAddress)
 	{
+		if (m_sock != INVALID_SOCKET)
+			CloseSocket();
+		m_sock = socket(PF_INET, SOCK_STREAM, 0);
 		if (m_sock == -1)
 			return false;
-
 		sockaddr_in serv_adr;
 		memset(&serv_adr, 0, sizeof(serv_adr));
 		serv_adr.sin_family = AF_INET;	// 地址族
 		serv_adr.sin_addr.s_addr = inet_addr(strIPAddress.c_str());	// 监听strIPAddressIP
 		serv_adr.sin_port = htons(9527);	// 端口
-		if (serv_adr.sin_addr.s_addr==INADDR_NONE)
+		if (serv_adr.sin_addr.s_addr == INADDR_NONE)
 		{
 			// 不存在
 			AfxMessageBox("指定的IP地址不存在！");
@@ -207,7 +194,7 @@ public:
 	{
 		if (m_sock == -1)
 			return -1;
-		char* buffer = new char[BUFFER_SIZE];
+		char* buffer = m_buffer.data();
 		memset(buffer, 0, BUFFER_SIZE);	// 初始化
 		size_t index = 0;
 		while (true)
@@ -239,6 +226,7 @@ public:
 	}
 	bool Send(CPacket& pack)
 	{
+		TRACE("m_sock %d\r\n", m_sock);
 		if (m_sock == -1)
 			return false;
 		return send(m_sock, pack.Data(), pack.Size(), 0) > 0;
@@ -264,7 +252,17 @@ public:
 		}
 		return false;
 	}
+	CPacket& GetPacket()
+	{
+		return m_packet;
+	}
+	void CloseSocket()
+	{
+		closesocket(m_sock);
+		m_sock = INVALID_SOCKET;
+	}
 private:
+	std::vector<char>m_buffer;
 	SOCKET m_sock;
 	CPacket m_packet;
 	CClientSocket& operator=(const CClientSocket& ss)	// 赋值重载函数
@@ -284,7 +282,7 @@ private:
 			MessageBox(NULL, _T("无法初始化套接字环境！\n请检查网络设置！"), _T("初始化错误"), MB_OK | MB_ICONERROR);
 			exit(0);	// 结束
 		}
-		m_sock = socket(PF_INET, SOCK_STREAM, 0);
+		m_buffer.resize(BUFFER_SIZE);
 	}
 	~CClientSocket()
 	{
