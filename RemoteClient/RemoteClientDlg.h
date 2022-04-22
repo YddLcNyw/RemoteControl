@@ -8,7 +8,7 @@
 // CRemoteClientDlg 对话框
 class CRemoteClientDlg : public CDialogEx
 {
-// 构造
+	// 构造
 public:
 	CRemoteClientDlg(CWnd* pParent = nullptr);	// 标准构造函数
 
@@ -17,11 +17,12 @@ public:
 	enum { IDD = IDD_REMOTECLIENT_DIALOG };
 #endif
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
-
-// 实现
+private:
+	int SendCommandPacket(int nCmd, BYTE* pData = NULL, size_t nLendth = 0);
+	// 实现
 protected:
 	HICON m_hIcon;
 
@@ -33,4 +34,10 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedBtnTest();
+	// IP输入框
+	DWORD m_server_address;
+	// 端口
+	CString m_nport;
+	afx_msg void OnBnClickedBtnFileinfo();
+	CTreeCtrl m_Tree;
 };

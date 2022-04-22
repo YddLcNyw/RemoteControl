@@ -161,7 +161,7 @@ public:
 		return m_instance;
 	}
 	// 初始化操作函数
-	bool InitSocket(const std::string& strIPAddress)
+	bool InitSocket(int nIP,int nPort)
 	{
 		if (m_sock != INVALID_SOCKET)
 			CloseSocket();
@@ -171,8 +171,8 @@ public:
 		sockaddr_in serv_adr;
 		memset(&serv_adr, 0, sizeof(serv_adr));
 		serv_adr.sin_family = AF_INET;	// 地址族
-		serv_adr.sin_addr.s_addr = inet_addr(strIPAddress.c_str());	// 监听strIPAddressIP
-		serv_adr.sin_port = htons(9527);	// 端口
+		serv_adr.sin_addr.s_addr = htonl(nIP);	// 监听strIPAddressIP
+		serv_adr.sin_port = htons(nPort);	// 端口
 		if (serv_adr.sin_addr.s_addr == INADDR_NONE)
 		{
 			// 不存在

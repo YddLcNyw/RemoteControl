@@ -48,9 +48,10 @@ int MakeDriverInfo()
 			result += 'A' + i - 1;
 		}
 	}
+	result += ',';
 	CPacket pack(1, (BYTE*)result.c_str(), result.size());	// 打包
 	Dump((BYTE*)pack.Data(), pack.Size());
-	//CServerSocket::getInstance()->Send(pack);
+	CServerSocket::getInstance()->Send(pack);
 	return 0;
 }
 // 查看指定目录下的文件功能的结构体
