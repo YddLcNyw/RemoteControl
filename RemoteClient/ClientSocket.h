@@ -148,6 +148,22 @@ typedef struct MouseEvent
 	WORD nButton;	// 左键、右键、中键
 	POINT ptXY;	// 坐标
 }MOUSEEV, * PMOUSEEV;
+// 查看指定目录下的文件功能的结构体
+typedef struct file_info
+{
+	// 结构体的构造函数
+	file_info()
+	{
+		IsInvalid = FALSE;
+		IsDirectory = -1;
+		HasNext = TRUE;
+		memset(szFileName, 0, sizeof(IsDirectory));
+	}
+	BOOL IsInvalid;	// 是否为有效文件
+	BOOL IsDirectory;	// 是否为目录 0否 1是
+	BOOL HasNext;	// 是否还有后续 0没有 1有
+	char szFileName[256];	// 文件名
+}FILEINFO, * PFILEINFO;
 // 报错函数
 std::string GetErrorInfo(int wsaErrCode);
 class CClientSocket

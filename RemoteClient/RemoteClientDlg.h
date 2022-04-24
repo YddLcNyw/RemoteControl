@@ -21,7 +21,21 @@ protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
 private:
-	int SendCommandPacket(int nCmd, BYTE* pData = NULL, size_t nLendth = 0);
+	// 拿到文件路径
+	CString GetPath(HTREEITEM hTree);
+	// 删除所有子节点
+	void DeleteTreeChildrenItem(HTREEITEM hTree);
+	// 1、查看磁盘分区
+	// 2、查看指定目录下的文件
+	// 3、打开文件
+	// 4、下载文件
+	// 5、鼠标操作
+	// 6、发送屏幕内容
+	// 7、锁机
+	// 8、解锁
+	// 1981、连接测试
+	// 返回值是命令号，小于0则是错误
+	int SendCommandPacket(int nCmd, bool bAutoClose = true, BYTE* pData = NULL, size_t nLendth = 0);
 	// 实现
 protected:
 	HICON m_hIcon;
@@ -40,4 +54,5 @@ public:
 	CString m_nport;
 	afx_msg void OnBnClickedBtnFileinfo();
 	CTreeCtrl m_Tree;
+	afx_msg void OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
 };

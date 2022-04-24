@@ -54,22 +54,6 @@ int MakeDriverInfo()
 	CServerSocket::getInstance()->Send(pack);
 	return 0;
 }
-// 查看指定目录下的文件功能的结构体
-typedef struct file_info
-{
-	// 结构体的构造函数
-	file_info()
-	{
-		IsInvalid = FALSE;
-		IsDirectory = -1;
-		HasNext = TRUE;
-		memset(szFileName, 0, sizeof(IsDirectory));
-	}
-	BOOL IsInvalid;	// 是否为有效文件
-	BOOL IsDirectory;	// 是否为目录 0否 1是
-	BOOL HasNext;	// 是否还有后续 0没有 1有
-	char szFileName[256];	// 文件名
-}FILEINFO, * PFILEINFO;
 // 查看指定目录下的文件
 int MakeDirectorInfo()
 {
@@ -84,11 +68,7 @@ int MakeDirectorInfo()
 	if (_chdir(strPath.c_str()) != 0)
 	{
 		FILEINFO finfo;
-		finfo.IsInvalid = TRUE;
-		finfo.IsDirectory = TRUE;
 		finfo.HasNext = FALSE;
-		memcpy(finfo.szFileName, strPath.c_str(), strPath.size());
-		//lstFileInfo.push_back(finfo);
 		CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
 		CServerSocket::getInstance()->Send(pack);	// 发送
 		OutputDebugString(_T("没有权限访问目录！"));
@@ -100,6 +80,10 @@ int MakeDirectorInfo()
 	if ((hfind = _findfirst("*", &fdata)) == -1)
 	{
 		OutputDebugString(_T("没有找到任何文件！"));
+		FILEINFO finfo;
+		finfo.HasNext = FALSE;
+		CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
+		CServerSocket::getInstance()->Send(pack);	// 发送
 		return -3;
 	}
 	// 遍历查找文件
