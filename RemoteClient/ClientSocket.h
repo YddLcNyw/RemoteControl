@@ -216,13 +216,13 @@ public:
 		{
 			// 收数据
 			size_t len = recv(m_sock, buffer + index, BUFFER_SIZE - index, 0);
-			if ((len <= 0) && (index == 0))
+			if ((len <= 0) && (index <= 0))
 				return -1;
 			// 解包
 			index += len;
 			len = index;
+			// 因为往构造函数里面传的len长度是引用，会被修改，如果放回的长度 =0 则是解析失败
 			m_packet = CPacket((BYTE*)buffer, len);
-			// 因为往构造函数里面传的长度是引用，会被修改，如果放回的长度 =0 则是解析失败
 			if (len > 0)
 			{
 				memmove(buffer, buffer + len, index - len);
