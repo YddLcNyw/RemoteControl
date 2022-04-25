@@ -21,6 +21,10 @@ protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
 private:
+	// 更新文件信息
+	void LoadFileCurrent();
+	// 显示文件信息
+	void LoadFileInfo();
 	// 拿到文件路径
 	CString GetPath(HTREEITEM hTree);
 	// 删除所有子节点
@@ -33,6 +37,7 @@ private:
 	// 6、发送屏幕内容
 	// 7、锁机
 	// 8、解锁
+	// 9、删除文件
 	// 1981、连接测试
 	// 返回值是命令号，小于0则是错误
 	int SendCommandPacket(int nCmd, bool bAutoClose = true, BYTE* pData = NULL, size_t nLendth = 0);
@@ -55,4 +60,11 @@ public:
 	afx_msg void OnBnClickedBtnFileinfo();
 	CTreeCtrl m_Tree;
 	afx_msg void OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
+	// 显示文件列表
+	CListCtrl m_List;
+	afx_msg void OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnDownloadFile();
+	afx_msg void OnDeleteFile();
+	afx_msg void OnRunFile();
 };

@@ -157,7 +157,7 @@ typedef struct file_info
 		IsInvalid = FALSE;
 		IsDirectory = -1;
 		HasNext = TRUE;
-		memset(szFileName, 0, sizeof(IsDirectory));
+		memset(szFileName, 0, sizeof(szFileName));
 	}
 	BOOL IsInvalid;	// 是否为有效文件
 	BOOL IsDirectory;	// 是否为目录 0否 1是
@@ -204,7 +204,7 @@ public:
 		}
 		return true;
 	}
-#define BUFFER_SIZE  4096
+#define BUFFER_SIZE  409600
 	// 接收数据
 	int DealCommand()
 	{

@@ -64,6 +64,7 @@ void CRemoteClientDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_IPAddress(pDX, IDC_IPADDRESS_SERV, m_server_address);
 	DDX_Text(pDX, IDC_EDIT_PORT, m_nport);
 	DDX_Control(pDX, IDC_TREE_DIR, m_Tree);
+	DDX_Control(pDX, IDC_LIST_FILE, m_List);
 }
 
 int CRemoteClientDlg::SendCommandPacket(int nCmd, bool bAutoClose, BYTE* pData, size_t nLendth)
@@ -100,6 +101,11 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BTN_TEST, &CRemoteClientDlg::OnBnClickedBtnTest)
 	ON_BN_CLICKED(IDC_BTN_FILEINFO, &CRemoteClientDlg::OnBnClickedBtnFileinfo)
 	ON_NOTIFY(NM_DBLCLK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMDblclkTreeDir)
+	ON_NOTIFY(NM_CLICK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMClickTreeDir)
+	ON_NOTIFY(NM_RCLICK, IDC_LIST_FILE, &CRemoteClientDlg::OnNMRClickListFile)
+	ON_COMMAND(ID_DOWNLOAD_FILE, &CRemoteClientDlg::OnDownloadFile)
+	ON_COMMAND(ID_DELETE_FILE, &CRemoteClientDlg::OnDeleteFile)
+	ON_COMMAND(ID_RUN_FILE, &CRemoteClientDlg::OnRunFile)
 END_MESSAGE_MAP()
 
 
@@ -229,6 +235,106 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 		dr += drivers[i];
 	}
 }
+void CRemoteClientDlg::LoadFileCurrent()
+{
+	HTREEITEM hTree = m_Tree.GetSelectedItem();
+	// 拿到文件路径
+	CString strPath = GetPath(hTree);
+	// 清空数据
+	m_List.DeleteAllItems();
+	// 发送命令
+	int nCmd = SendCommandPacket(2, false, (BYTE*)(LPCSTR)strPath, strPath.GetLength());
+	// 拿到数据
+	PFILEINFO pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
+	// 获取套接字的实例
+	CClientSocket* pClient = CClientSocket::getInstance();
+	while (pInfo->HasNext)
+	{
+		TRACE("[%s] isdir %d\r\n", pInfo->szFileName, pInfo->IsDirectory);
+		// 如果还有后续信息则继续循环
+		if (!pInfo->IsDirectory)
+		{
+			// 是文件就插入到文件显示框里面
+			m_List.InsertItem(0, pInfo->szFileName);
+		}
+		// 接收数据并解析
+		int cmd = pClient->DealCommand();
+		TRACE("ack：\r\n", cmd);
+		if (cmd < 0)
+			break;
+		// 再次拿数据
+		pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
+	}
+	// 关闭套接字
+	pClient->CloseSocket();
+}
+void CRemoteClientDlg::LoadFileInfo()
+{
+	// 获取鼠标当前位置
+	CPoint ptMouse;
+	GetCursorPos(&ptMouse);
+	// 坐标转换
+	m_Tree.ScreenToClient(&ptMouse);
+	// 获取当前路径
+	HTREEITEM hTreeSelected = m_Tree.HitTest(ptMouse, 0);
+	// 判断鼠标有没有点到节点
+	if (hTreeSelected == NULL)
+		return;
+	// 判断选中的目录有没有子节点,没有就返回
+	if (m_Tree.GetChildItem(hTreeSelected) == NULL)
+		return;
+	// 删除节点
+	DeleteTreeChildrenItem(hTreeSelected);
+	// 清空数据
+	m_List.DeleteAllItems();
+	// 拿到文件路径
+	CString strPath = GetPath(hTreeSelected);
+	// 发送命令
+	int nCmd = SendCommandPacket(2, false, (BYTE*)(LPCSTR)strPath, strPath.GetLength());
+	// 拿到数据
+	PFILEINFO pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
+	// 获取套接字的实例
+	CClientSocket* pClient = CClientSocket::getInstance();
+	while (pInfo->HasNext)
+	{
+		TRACE("[%s] isdir %d\r\n", pInfo->szFileName, pInfo->IsDirectory);
+		// 如果还有后续信息则继续循环
+		if (pInfo->IsDirectory)
+		{
+			// 是目录
+			if (CString(pInfo->szFileName) == "." || (CString(pInfo->szFileName) == ".."))
+			{
+				// 是文件夹
+				// 接收数据并解析
+				int cmd = pClient->DealCommand();
+				TRACE("ack：\r\n", cmd);
+				if (cmd < 0)
+					break;
+				// 再次拿数据
+				pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
+				continue;
+			}
+			// 插入数据
+			HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, hTreeSelected, TVI_LAST);
+			// 是目录
+			m_Tree.InsertItem("", hTemp, TVI_LAST);
+		}
+		else
+		{
+			// 是文件就插入到文件显示框里面
+			m_List.InsertItem(0, pInfo->szFileName);
+		}
+		// 接收数据并解析
+		int cmd = pClient->DealCommand();
+		TRACE("ack：\r\n", cmd);
+		if (cmd < 0)
+			break;
+		// 再次拿数据
+		pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
+	}
+	// 关闭套接字
+	pClient->CloseSocket();
+}
 // 拿到文件路径
 CString  CRemoteClientDlg::GetPath(HTREEITEM hTree)
 {
@@ -256,67 +362,141 @@ void CRemoteClientDlg::DeleteTreeChildrenItem(HTREEITEM hTree)
 			m_Tree.DeleteItem(hSub);
 	} while (hSub != NULL);
 }
+// 双击
 void CRemoteClientDlg::OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	*pResult = 0;
+	LoadFileInfo();
+}
+// 点击
+void CRemoteClientDlg::OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	// TODO: 在此添加控件通知处理程序代码
 	*pResult = 0;
-	// 获取鼠标当前位置
-	CPoint ptMouse;
+	LoadFileInfo();
+}
+
+void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+	// TODO: 在此添加控件通知处理程序代码
+	*pResult = 0;
+	CPoint ptMouse, ptList;
+	// 把屏幕坐标转换到客户端坐标
 	GetCursorPos(&ptMouse);
-	// 坐标转换
-	m_Tree.ScreenToClient(&ptMouse);
-	// 获取当前路径
-	HTREEITEM hTreeSelected = m_Tree.HitTest(ptMouse, 0);
-	// 判断鼠标有没有点到节点
-	if (hTreeSelected == NULL)
+	ptList = ptMouse;
+	m_List.ScreenToClient(&ptList);
+	// 获取列表号
+	int  ListSelected = m_List.HitTest(ptList);
+	if (ListSelected < 0)
+		// 没有点到东西
 		return;
-	// 判断选中的目录有没有子节点,没有就返回
-	if (m_Tree.GetChildItem(hTreeSelected) == NULL)
-		return;
-	// 删除节点
-	DeleteTreeChildrenItem(hTreeSelected);
-	// 拿到文件路径
-	CString strPath = GetPath(hTreeSelected);
-	// 发送命令
-	int nCmd = SendCommandPacket(2, false, (BYTE*)(LPCSTR)strPath, strPath.GetLength());
-	// 拿到数据
-	PFILEINFO pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
-	// 获取套接字的实例
-	CClientSocket* pClient = CClientSocket::getInstance();
-	while (pInfo->HasNext)
+	CMenu menu;
+	// 拿到句柄
+	menu.LoadMenu(IDR_MENU_RCLICK);
+	CMenu* pPupup = menu.GetSubMenu(0);
+	if (pPupup != NULL)
 	{
-		// 如果还有后续信息则继续循环
-		if (pInfo->IsDirectory)
-		{
-			// 是目录
-			if ((CString(pInfo->szFileName) == ".") || (CString(pInfo->szFileName) == ".."))
-			{
-				// 是文件夹
-				// 接收数据并解析
-				int cmd = pClient->DealCommand();
-				TRACE("ack：\r\n", cmd);
-				if (cmd < 0)
-					break;
-				// 再次拿数据
-				pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
-				continue;
-			}
-		}
-		// 插入数据
-		HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, hTreeSelected, TVI_LAST);
-		if (pInfo->IsDirectory)
-		{
-			// 是目录
-			m_Tree.InsertItem("", hTemp, TVI_LAST);
-		}
-		// 接收数据并解析
-		int cmd = pClient->DealCommand();
-		TRACE("ack：\r\n", cmd);
-		if (cmd < 0)
-			break;
-		// 再次拿数据
-		pInfo = (PFILEINFO)CClientSocket::getInstance()->GetPacket().strData.c_str();
+		pPupup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, ptMouse.x, ptMouse.y, this);
 	}
-	// 关闭套接字
-	pClient->CloseSocket();
+}
+// 下载文件操作
+void CRemoteClientDlg::OnDownloadFile()
+{
+	// 获取选中的列表
+	int nLiseSelected = m_List.GetSelectionMark();
+	// 拿到文件名
+	CString strFile = m_List.GetItemText(nLiseSelected, 0);
+	// 设置保存窗口的属性
+	CFileDialog dlg(FALSE, "*", strFile, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, NULL, this);
+	// 弹出模态窗口，保存文件窗口
+	if (dlg.DoModal() == IDOK)
+	{
+		// 以二进制方式写
+		FILE* pFile = fopen(dlg.GetPathName(), "wb+");	// 参数1完整路径名，参数2二进制写入
+		if (pFile == NULL)
+		{
+			AfxMessageBox(_T("没有权限报错该文件，或者文件无法创建！"));
+			return;
+		}
+		// 拿到文件路径
+		HTREEITEM hSelected = m_Tree.GetSelectedItem();
+		strFile = GetPath(hSelected) + strFile;
+		TRACE("%s\r\n", LPCSTR(strFile));
+		// 发送命令
+		int ret = SendCommandPacket(4, false, (BYTE*)(LPCSTR)strFile, strFile.GetLength());
+		if (ret < 0)
+		{
+			AfxMessageBox(_T("执行命令下载失败！"));
+			TRACE("执行下载失败，ret = %d\r\n", ret);
+			return;
+		}
+		CClientSocket* pClient = CClientSocket::getInstance();
+		// 获取数据长度
+		long long nlength = *(long long*)pClient->GetPacket().strData.c_str();
+		if (nlength == 0)
+		{
+			AfxMessageBox(_T("文件长度为0或者无法读取文件！"));
+			return;
+		}
+		long long nCount = 0;
+		while (nCount < nlength)
+		{
+			// 接收数据
+			ret = pClient->DealCommand();
+			if (ret < 0)
+			{
+				AfxMessageBox(_T("传输失败！"));
+				TRACE("传输失败，ret = %d\r\n", ret);
+				break;
+			}
+			// 写入文件
+			fwrite(pClient->GetPacket().strData.c_str(), 1, pClient->GetPacket().strData.size(), pFile);
+			nCount += pClient->GetPacket().strData.size();
+		}
+		// 关闭文件
+		fclose(pFile);
+		// 关闭套接字
+		pClient->CloseSocket();
+	}
+}
+// 删除文件操作
+void CRemoteClientDlg::OnDeleteFile()
+{
+	// 获取节点
+	HTREEITEM hSelected = m_Tree.GetSelectedItem();
+	// 拿到路径
+	CString strPath = GetPath(hSelected);
+	// 列表选中的东西
+	int nSelected = m_List.GetSelectionMark();
+	// 拿到文件名
+	CString strFile = m_List.GetItemText(nSelected, 0);
+	strFile = strPath + strFile;
+	int ret = SendCommandPacket(9, true, (BYTE*)(LPCSTR)strFile, strFile.GetLength());
+	if (ret < 0)
+	{
+		AfxMessageBox(_T("删除文件目录执行失败！"));
+		return;
+	}
+	// 文件删除成功更新数据
+	LoadFileCurrent();
+}
+// 打开文件操作
+void CRemoteClientDlg::OnRunFile()
+{
+	// 获取节点
+	HTREEITEM hSelected = m_Tree.GetSelectedItem();
+	// 拿到路径
+	CString strPath = GetPath(hSelected);
+	// 列表选中的东西
+	int nSelected = m_List.GetSelectionMark();
+	// 拿到文件名
+	CString strFile = m_List.GetItemText(nSelected, 0);
+	strFile = strPath + strFile;
+	int ret = SendCommandPacket(3, true, (BYTE*)(LPCSTR)strFile, strFile.GetLength());
+	if (ret < 0)
+	{
+		AfxMessageBox(_T("打开文件目录执行失败！"));
+		return;
+	}
 }

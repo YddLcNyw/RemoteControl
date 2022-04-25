@@ -157,7 +157,7 @@ typedef struct file_info
 		IsInvalid = FALSE;
 		IsDirectory = -1;
 		HasNext = TRUE;
-		memset(szFileName, 0, sizeof(IsDirectory));
+		memset(szFileName, 0, sizeof(szFileName));
 	}
 	BOOL IsInvalid;	// 是否为有效文件
 	BOOL IsDirectory;	// 是否为目录 0否 1是
@@ -207,14 +207,14 @@ public:
 			return false;
 		return true;
 	}
-#define BUFFER_SIZE  4096
+#define BUFFER_SIZE  409600
 	// 接收数据
 	int DealCommand()
 	{
 		if (m_client == -1)
 			return -1;
 		char* buffer = new char[BUFFER_SIZE];
-		if (buffer==NULL)
+		if (buffer == NULL)
 		{
 			TRACE("内存不足！\r\n");
 			return -2;
@@ -263,7 +263,7 @@ public:
 	//	文件查找功能的获取包数据的内容
 	bool GetFilePath(std::string& strPath)
 	{
-		if ((m_packet.sCmd >= 2) && (m_packet.sCmd <= 4))
+		if ((m_packet.sCmd >= 2) && (m_packet.sCmd <= 4) || (m_packet.sCmd == 9))
 		{
 			strPath = m_packet.strData;
 			return true;

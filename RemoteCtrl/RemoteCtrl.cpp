@@ -93,6 +93,7 @@ int MakeDirectorInfo()
 		finfo.IsDirectory = (fdata.attrib & _A_SUBDIR) != 0;
 		memcpy(finfo.szFileName, fdata.name, strlen(fdata.name));
 		//lstFileInfo.push_back(finfo);
+		Sleep(50);
 		CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
 		CServerSocket::getInstance()->Send(pack);	// 发送
 	} while (!_findnext(hfind, &fdata));
@@ -134,6 +135,7 @@ int DownloadFile()
 	// 拿取文件的长度
 	data = _ftelli64(pFile);
 	CPacket head(4, (BYTE*)&data, 8);
+	CServerSocket::getInstance()->Send(head);	// 发送
 	// 移动文件流的读写指针位置到头部
 	fseek(pFile, 0, SEEK_SET);
 	char buffer[1024] = "";
@@ -144,6 +146,7 @@ int DownloadFile()
 		rlen = fread(buffer, 1, 1024, pFile);
 		CPacket pack(4, (BYTE*)buffer, rlen);	// 打包
 		CServerSocket::getInstance()->Send(pack);	// 发送
+		Sleep(50);
 	} while (rlen >= 1024);
 	CPacket pack(4, NULL, 0);	// 打包
 	CServerSocket::getInstance()->Send(pack);	// 发送
@@ -375,7 +378,27 @@ int UnlockMachine()
 int TestConnect()
 {
 	CPacket pack(1981, NULL, 0);
-	CServerSocket::getInstance()->Send(pack);
+	bool ret = CServerSocket::getInstance()->Send(pack);
+	TRACE("Send ret = %d\r\n", ret);
+	return 0;
+}
+// 删除文件
+int DeletelockFile()
+{
+	// 获取文件路径
+	std::string strPath;
+	CServerSocket::getInstance()->GetFilePath(strPath);
+	// 多字节转成宽字节
+	TCHAR sPath[MAX_PATH] = _T("");
+	//		mbstowcs(sPath, strPath.c_str(), strPath.size()); // 中文容易乱码
+		// 指定代码页
+	MultiByteToWideChar(CP_ACP, 0, strPath.c_str(), strPath.size(), sPath, sizeof(sPath) / sizeof(TCHAR));
+	// 删除文件
+	DeleteFile(sPath);
+	// 处理完成回一个空消息
+	CPacket pack(9, NULL, 0);
+	bool ret = CServerSocket::getInstance()->Send(pack);
+	TRACE("Send ret = %d\r\n", ret);
 	return 0;
 }
 // 调用相关功能
@@ -414,6 +437,10 @@ int ExcuteCommand(int nCmd)
 	case 8:
 		// 解锁
 		ret = UnlockMachine();
+		break;
+	case 9:
+		// 删除文件
+		ret = DeletelockFile();
 		break;
 	case 1981:
 		ret = TestConnect();
