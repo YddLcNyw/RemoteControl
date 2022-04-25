@@ -93,7 +93,6 @@ int MakeDirectorInfo()
 		finfo.IsDirectory = (fdata.attrib & _A_SUBDIR) != 0;
 		memcpy(finfo.szFileName, fdata.name, strlen(fdata.name));
 		//lstFileInfo.push_back(finfo);
-		Sleep(50);
 		CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));	// 打包
 		CServerSocket::getInstance()->Send(pack);	// 发送
 	} while (!_findnext(hfind, &fdata));

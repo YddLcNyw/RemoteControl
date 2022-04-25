@@ -177,7 +177,7 @@ public:
 		return m_instance;
 	}
 	// 初始化操作函数
-	bool InitSocket(int nIP,int nPort)
+	bool InitSocket(int nIP, int nPort)
 	{
 		if (m_sock != INVALID_SOCKET)
 			CloseSocket();
@@ -211,13 +211,12 @@ public:
 		if (m_sock == -1)
 			return -1;
 		char* buffer = m_buffer.data();
-		memset(buffer, 0, BUFFER_SIZE);	// 初始化
-		size_t index = 0;
+		static size_t index = 0;	// 缓冲区
 		while (true)
 		{
 			// 收数据
 			size_t len = recv(m_sock, buffer + index, BUFFER_SIZE - index, 0);
-			if (len <= 0)
+			if ((len <= 0) && (index == 0))
 				return -1;
 			// 解包
 			index += len;
@@ -226,7 +225,7 @@ public:
 			// 因为往构造函数里面传的长度是引用，会被修改，如果放回的长度 =0 则是解析失败
 			if (len > 0)
 			{
-				memmove(buffer, buffer + len, BUFFER_SIZE - len);
+				memmove(buffer, buffer + len, index - len);
 				index -= len;
 				return m_packet.sCmd;
 			}
@@ -299,6 +298,7 @@ private:
 			exit(0);	// 结束
 		}
 		m_buffer.resize(BUFFER_SIZE);
+		memset(m_buffer.data(), 0, BUFFER_SIZE);	// 初始化
 	}
 	~CClientSocket()
 	{
