@@ -18,7 +18,15 @@ public:
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_REMOTECLIENT_DIALOG };
 #endif
-
+public:
+	bool isFull() const
+	{
+		return m_isFull;
+	}
+	CImage& GetImage()
+	{
+		return m_image;
+	}
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 	CImage m_image;	// 图片缓存
@@ -80,4 +88,6 @@ public:
 	afx_msg void OnRunFile();
 	// ②·定义自定义消息响应函数
 	afx_msg LRESULT OnSendPacket(WPARAM wParam, LPARAM lParam);
+	afx_msg void OnBnClickedBtnStartWatch();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 };

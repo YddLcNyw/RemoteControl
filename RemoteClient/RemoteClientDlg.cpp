@@ -7,7 +7,7 @@
 #include "RemoteClient.h"
 #include "RemoteClientDlg.h"
 #include "afxdialogex.h"
-
+#include "CWatchDialog.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -64,11 +64,35 @@ void CRemoteClientDlg::threadWatchData()
 			int cmd = pClient->DealCommand();
 			if (cmd == 6)
 			{
-				if (m_isFull==false)
+				// 更新数据到缓存
+				if (m_isFull == false)
 				{
 					// 获取包数据
 					BYTE* pData = (BYTE*)pClient->GetPacket().strData.c_str();
-					m_isFull = true;
+					// 从堆中分配指定数量的字节。
+					HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
+					if (hMem == NULL)
+					{
+						TRACE("内存不足！");
+						Sleep(1);
+						continue;
+					}
+					// 创建输入流
+					IStream* pStream = NULL;
+					// 创建全局可变化的内存
+					HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+					if (hRet == S_OK)
+					{
+						ULONG length = 0;
+						// 往流内写数据
+						pStream->Write(pData, pClient->GetPacket().strData.size(), &length);
+						// 跳转到流的开头
+						LARGE_INTEGER bg = { 0 };
+						pStream->Seek(bg, STREAM_SEEK_SET, NULL);
+						// 字节数据转到图片数据
+						m_image.Load(pStream);
+						m_isFull = true;
+					}
 				}
 			}
 		}
@@ -227,6 +251,8 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_COMMAND(ID_DELETE_FILE, &CRemoteClientDlg::OnDeleteFile)
 	ON_COMMAND(ID_RUN_FILE, &CRemoteClientDlg::OnRunFile)
 	ON_MESSAGE(WM_SEND_PACKET, &CRemoteClientDlg::OnSendPacket) // ③·注册消息
+	ON_BN_CLICKED(IDC_BTN_START_WATCH, &CRemoteClientDlg::OnBnClickedBtnStartWatch)
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -586,4 +612,25 @@ LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
 	CString strFile = (LPCTSTR)lParam;
 	int ret = SendCommandPacket(wParam >> 1, wParam & 1, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
 	return ret;
+}
+
+
+void CRemoteClientDlg::OnBnClickedBtnStartWatch()
+{
+	// 创建线程函数
+	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
+	// 	防止重复点击改按钮，远控控制功能开启后将禁用改按钮
+	// 		GetDlgItem(IDC_BTN_START_WATCH)->EnableWindow(FALSE);
+	// 调用远程控制显示窗口
+	CWatchDialog dlg(this);
+	// 显示模态窗口
+	dlg.DoModal();
+}
+
+// 定时器
+void CRemoteClientDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+
+	CDialogEx::OnTimer(nIDEvent);
 }
