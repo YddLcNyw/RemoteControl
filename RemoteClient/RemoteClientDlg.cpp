@@ -49,6 +49,7 @@ END_MESSAGE_MAP()
 
 void CRemoteClientDlg::threadWatchData()
 {
+	Sleep(50);
 	CClientSocket* pClient = NULL;
 	do
 	{
@@ -56,45 +57,42 @@ void CRemoteClientDlg::threadWatchData()
 	} while (pClient == NULL);
 	for (;;)
 	{
-		CPacket pack(6, NULL, 0);
-		bool ret = pClient->Send(pack);
-		if (ret)
+		// 更新数据到缓存
+		if (m_isFull == false)
 		{
+			int ret = SendMessage(WM_SEND_PACKET, 6 << 1 | 1);
 			// 获取命令
-			int cmd = pClient->DealCommand();
-			if (cmd == 6)
+			if (ret == 6)
 			{
-				// 更新数据到缓存
-				if (m_isFull == false)
+				// 获取包数据
+				BYTE* pData = (BYTE*)pClient->GetPacket().strData.c_str();
+				// 从堆中分配指定数量的字节。
+				HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
+				if (hMem == NULL)
 				{
-					// 获取包数据
-					BYTE* pData = (BYTE*)pClient->GetPacket().strData.c_str();
-					// 从堆中分配指定数量的字节。
-					HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
-					if (hMem == NULL)
-					{
-						TRACE("内存不足！");
-						Sleep(1);
-						continue;
-					}
-					// 创建输入流
-					IStream* pStream = NULL;
-					// 创建全局可变化的内存
-					HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
-					if (hRet == S_OK)
-					{
-						ULONG length = 0;
-						// 往流内写数据
-						pStream->Write(pData, pClient->GetPacket().strData.size(), &length);
-						// 跳转到流的开头
-						LARGE_INTEGER bg = { 0 };
-						pStream->Seek(bg, STREAM_SEEK_SET, NULL);
-						// 字节数据转到图片数据
-						m_image.Load(pStream);
-						m_isFull = true;
-					}
+					TRACE("内存不足！");
+					Sleep(1);
+					continue;
+				}
+				// 创建输入流
+				IStream* pStream = NULL;
+				// 创建全局可变化的内存
+				HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+				if (hRet == S_OK)
+				{
+					ULONG length = 0;
+					// 往流内写数据
+					pStream->Write(pData, pClient->GetPacket().strData.size(), &length);
+					// 跳转到流的开头
+					LARGE_INTEGER bg = { 0 };
+					pStream->Seek(bg, STREAM_SEEK_SET, NULL);
+					// 字节数据转到图片数据
+					m_image.Load(pStream);
+					m_isFull = true;
 				}
 			}
+			else
+				Sleep(1);
 		}
 		else
 			Sleep(1);
@@ -609,20 +607,35 @@ void CRemoteClientDlg::OnRunFile()
 // ④实现消息响应函数
 LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
 {
-	CString strFile = (LPCTSTR)lParam;
-	int ret = SendCommandPacket(wParam >> 1, wParam & 1, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
+	int ret = 0;
+	// 右移1位
+	int cmd = wParam >> 1;
+	switch (cmd)
+	{
+	case 4:
+	{
+		CString strFile = (LPCTSTR)lParam;
+		ret = SendCommandPacket(cmd, wParam & 1, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
+		break;
+	}
+	case 6:
+	{
+		ret = SendCommandPacket(cmd, wParam & 1);
+		break;
+	}
+	default:
+		ret = -1;
+	}
 	return ret;
 }
 
 
 void CRemoteClientDlg::OnBnClickedBtnStartWatch()
 {
-	// 创建线程函数
-	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
-	// 	防止重复点击改按钮，远控控制功能开启后将禁用改按钮
-	// 		GetDlgItem(IDC_BTN_START_WATCH)->EnableWindow(FALSE);
 	// 调用远程控制显示窗口
 	CWatchDialog dlg(this);
+	// 创建线程函数
+	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
 	// 显示模态窗口
 	dlg.DoModal();
 }

@@ -27,6 +27,10 @@ public:
 	{
 		return m_image;
 	}
+	void SetImageStatus(bool isFull = false)
+	{
+		m_isFull = isFull;
+	}
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 	CImage m_image;	// 图片缓存

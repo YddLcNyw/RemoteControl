@@ -204,7 +204,7 @@ public:
 		}
 		return true;
 	}
-#define BUFFER_SIZE  409600
+#define BUFFER_SIZE  614400
 	// 接收数据
 	int DealCommand()
 	{
@@ -221,10 +221,11 @@ public:
 			// 解包
 			index += len;
 			len = index;
-			// 因为往构造函数里面传的len长度是引用，会被修改，如果放回的长度 =0 则是解析失败
+			// 进行打包，如果接收到的数据不够一个包的话就继续接收打包
 			m_packet = CPacket((BYTE*)buffer, len);
 			if (len > 0)
 			{
+				// 打包完成
 				memmove(buffer, buffer + len, index - len);
 				index -= len;
 				return m_packet.sCmd;
