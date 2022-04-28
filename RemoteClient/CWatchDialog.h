@@ -11,7 +11,7 @@ public:
 	CWatchDialog(CWnd* pParent = nullptr);   // 标准构造函数
 	virtual ~CWatchDialog();
 
-// 对话框数据
+	// 对话框数据
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_DLG_WATCH };
 #endif
@@ -22,7 +22,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	// 坐标转换
-	CPoint UserPoint2RemoteScreenPoint(CPoint& point);
+	CPoint UserPoint2RemoteScreenPoint(CPoint& point, bool isScreen = false);
 	virtual BOOL OnInitDialog();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	// 图片显示框

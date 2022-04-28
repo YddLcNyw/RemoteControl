@@ -204,7 +204,7 @@ public:
 		}
 		return true;
 	}
-#define BUFFER_SIZE  614400
+#define BUFFER_SIZE  4096000
 	// 接收数据
 	int DealCommand()
 	{
