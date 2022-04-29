@@ -55,7 +55,7 @@ void CRemoteClientDlg::threadWatchData()
 	{
 		pClient = CClientSocket::getInstance();;
 	} while (pClient == NULL);
-	for (;;)
+	while (!m_isClosed)
 	{
 		// 更新数据到缓存
 		if (m_isFull == false)
@@ -86,6 +86,7 @@ void CRemoteClientDlg::threadWatchData()
 					// 跳转到流的开头
 					LARGE_INTEGER bg = { 0 };
 					pStream->Seek(bg, STREAM_SEEK_SET, NULL);
+					if ((HBITMAP)m_image != NULL)m_image.Destroy();
 					// 字节数据转到图片数据
 					m_image.Load(pStream);
 					m_isFull = true;
@@ -637,12 +638,15 @@ LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
 
 void CRemoteClientDlg::OnBnClickedBtnStartWatch()
 {
+	m_isClosed = false;
 	// 调用远程控制显示窗口
 	CWatchDialog dlg(this);
 	// 创建线程函数
-	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
+	HANDLE hThread = (HANDLE)_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
 	// 显示模态窗口
 	dlg.DoModal();
+	m_isClosed = true;
+	WaitForSingleObject(hThread, 500);
 }
 
 // 定时器

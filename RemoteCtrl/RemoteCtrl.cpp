@@ -259,7 +259,7 @@ int SendScreen()
 	int nWidth = GetDeviceCaps(hScreen, HORZRES);	// 宽
 	int nHeight = GetDeviceCaps(hScreen, VERTRES);	// 高
 	screen.Create(nWidth, nHeight, nBitPerPixel);	// 创建图片大小
-	BitBlt(screen.GetDC(), 0, 0, 2560, 1440, hScreen, 0, 0, SRCCOPY);	// 完成截屏
+	BitBlt(screen.GetDC(), 0, 0, nWidth, nHeight, hScreen, 0, 0, SRCCOPY);	// 完成截屏
 	ReleaseDC(NULL, hScreen);	// 清空
 	HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);	// 分配堆上可调大小的内存
 	if (hMem == NULL)

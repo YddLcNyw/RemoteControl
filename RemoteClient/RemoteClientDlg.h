@@ -35,6 +35,7 @@ protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 	CImage m_image;	// 图片缓存
 	bool m_isFull;	// 缓存是否有数据 true有数据 false没有数据
+	bool m_isClosed;	// 监视是否关闭
 private:
 	// 监控数据线程函数调用的函数
 	void threadWatchData();
