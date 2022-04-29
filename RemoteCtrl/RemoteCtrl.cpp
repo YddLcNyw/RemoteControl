@@ -305,16 +305,27 @@ unsigned __stdcall threadLockDlg(void* arg)
 	rect.right = GetSystemMetrics(SM_CXFULLSCREEN);
 	// 获取满屏的时候Y最大坐标
 	rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN);
-	rect.bottom *= 1.02;
+	rect.bottom *= 1.10;
 	dlg.MoveWindow(rect);
+	CWnd* pText = dlg.GetDlgItem(IDC_STATIC);
+	if (pText)
+	{
+		CRect rtText;
+		pText->GetWindowRect(rtText);
+		int nWidth = rtText.Width();
+		int nHeight = rtText.Height();
+		int x = (rect.right - nWidth) / 2;
+		int y = (rect.bottom - nHeight) / 2;
+		pText->MoveWindow(x, y, rtText.Width(), rtText.Height());
+	}
 	// 窗口置顶
 	dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 	// 隐藏鼠标
 	ShowCursor(false);
 	// 隐藏任务栏
 	::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_HIDE);
-	//dlg.GetWindowRect(rect);
 	// 限制鼠标范围
+	dlg.GetWindowRect(rect);
 	rect.left = 0;
 	rect.top = 0;
 	rect.right = 1;
@@ -337,6 +348,8 @@ unsigned __stdcall threadLockDlg(void* arg)
 			}
 		}
 	}
+	// 恢复鼠标限制范围
+	ClipCursor(NULL);
 	// 显示鼠标
 	ShowCursor(true);
 	// 显示任务栏
@@ -370,7 +383,7 @@ int UnlockMachine()
 	// 向线程发送消息
 	PostThreadMessage(threadid, WM_KEYDOWN, 0x41, 0);
 	// 这里发送一个空消息是为了告诉服务端这个功能结束了
-	CPacket pack(7, NULL, 0);
+	CPacket pack(8, NULL, 0);
 	CServerSocket::getInstance()->Send(pack);
 	return 0;
 }
