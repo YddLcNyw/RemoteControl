@@ -58,7 +58,7 @@ CPoint CWatchDialog::UserPoint2RemoteScreenPoint(CPoint& point, bool isScreen)
 	CRect clietRect;
 	m_picture.GetWindowRect(clietRect);
 	TRACE("X = %d, Y = %d\r\n", clietRect.Width(), clietRect.Height());
-	return CPoint(point.x * m_nObjWidth / clietRect.Width(), point.y * m_nObjHeight / clietRect.Height());
+	return CPoint(point.x * m_nObjWidth / clietRect.Width(), (point.y-49) * m_nObjHeight / clietRect.Height());
 }
 
 BOOL CWatchDialog::OnInitDialog()
